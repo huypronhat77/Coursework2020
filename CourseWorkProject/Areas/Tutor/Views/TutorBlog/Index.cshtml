@@ -1,0 +1,155 @@
+﻿@model List<CourseWorkProject.Models.Blog>
+@{
+    ViewBag.Title = "Tutor blog";
+    Layout = "~/Areas/Tutor/Views/Shared/_TutorLayout.cshtml";
+}
+
+@Html.ActionLink("Create new Blog", "TutorCreateBlog", "Blog", new { @class = "btn btn-primary", id = "btn-create" })
+@if (Model.Count == 0)
+{
+    <h2> @ViewBag.Empty</h2>
+}
+else
+{
+    foreach (var blog in Model)
+    {
+        <div class="panel panel-default">
+            <div class="card">
+                <div class="card-header">
+                    <span><b>@blog.Creator</b></span>
+                    <span class="create-date">
+                        <span class="glyphicon glyphicon-time" aria-hidden="true"></span>
+                        <span><time datetime="@blog.CreateDate">@blog.CreateDate</time></span>
+
+                    </span>
+                </div>
+                <div class="card-body" style="line-height:40px;">
+                    <a href="/Tutor/TutorBlog/BlogDetail?Id=@blog.id"><span class="badge badge-warning" style="font-size:17px;">@blog.Title</span></a><br />
+                    <p>@blog.Content  <a href="/Tutor/TutorBlog/BlogDetail?Id=@blog.id">Continue reading &rarr;</a></p>
+                    @if (blog.FileName != null)
+                    {
+                        <a href="@Url.Content("~/UploadFiles/" + blog.FileName)">@blog.FileName</a>
+                    }
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-success comment" id="btn-comment" data-id="@blog.id" value="Comment">
+                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span> Comment
+                    </button>
+                    <div class="@String.Format("{0}_{1}",blog.id,"listComment")">
+
+                    </div>
+                </div>
+                <div class="@String.Format("{0}_{1}","Comment",blog.id)" style="border: 1px solid #f1eaea; background-color: #eaf2ff;">
+                    <div class="AddComment" style="margin-left: 30%;  margin-bottom: 5px; margin-top: 8px;">
+                        <input type="text" id="@string.Format("{0}_{1}", "comment", blog.id)" class="form-control" placeholder="Add a Comment ..." style="display: inline;" />
+                        <button type="button" class="btn btn-default addComment" data-id="@blog.id"><i class="fa fa-paper-plane" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    }
+
+}
+
+@section scripts{
+    <script>
+        var old= "";
+        $(document).ready(function () {
+            $(".comment").on("click", function () {
+                debugger
+
+                var blogid = $(this).attr("data-id");
+                var listCommnet = $("."+blogid+"_listComment");
+                var allCommentsArea = $('<div>').addClass('allComments_' + blogid);
+                //Get all comments
+                $.ajax({
+                    url:"/Tutor/TutorBlog/GetComments",
+                    type: "GET",
+                    data: {
+                        blogid
+                    },
+                    success: function (respone) {
+                        debugger
+
+                        console.log(respone);
+                        if (old == respone) {
+                          listCommnet.html(respone);
+
+                        }
+                        else {
+                            listCommnet.html(respone);
+
+                        }
+                        old = respone;
+                        //listCommnet.append(respone);
+
+
+                    },
+                    error: function () {
+                         alert('Sorry: Comments cannot be loaded !');
+                    }
+                })
+            })
+
+            $('.addComment').on('click', function () {
+
+                var blogId = $(this).attr('data-id');
+                var commentContent = $('#comment_' + blogId).val();
+                var dateTimeNow = new Date();
+                var listCommnet = document.querySelectorAll('.card-footer')
+                var user =  "@HttpContext.Current.User.Identity.Name";
+                //alert('Hello');
+                var comment = {
+                    Content: commentContent,
+                    CreateDate: dateTimeNow.toLocaleString(),
+                    Creator: user,
+                };
+
+                $.ajax({
+
+                    type: 'POST',
+                    url: '@Url.Action("AddComment", "TutorBlog")',
+                    data: { comment, blogId },
+                    success: function (response) {
+                        debugger
+                        var today = new Date();
+                        var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+                        console.log(listCommnet.length)
+                        for (i = 0; i < listCommnet.length; i++) {
+                            for (k = 0; k < listCommnet[i].children.length; k++) {
+                                console.log(listCommnet[i].children.length);
+                                if (listCommnet[i].children[k].tagName == "DIV") {
+                                        /*listCommnet.append("<p>" + comment.Content + "</p>"*/;
+                                    if (listCommnet[i].children[k].className == (blogId + "_listComment"))
+                                        //listCommnet[i].children[k].append("<h2>" + comment.Content + "</h2>");
+                                        listCommnet[i].children[k].innerHTML +=
+                                            "<div" + " " + "class=" + '"card comment-box"' + ">"
+                                            + "<div" + " " + "class=" + '"card-header user-comment"'
+                                            + "style=" + '"background-color:#fff"' + ">"
+                                            + "<span>" + '<b>' + response.Creator + '</b>' + '</span>'                                          
+                                            + "<p>" + response.Content + "</p>"
+                                            + "</div>"
+                                            + "</div>";
+                                    $('#comment_' + blogId).val("");
+                                }
+
+                            }
+                        }
+                    },
+                    error: function (response) {
+                        alert('Sorry: Something Wrong');
+                    }
+
+                });
+
+            });
+
+
+        });
+
+
+    </script>
+}
+
